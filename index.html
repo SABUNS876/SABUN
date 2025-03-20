@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>YouTube Downloader</title>
+
+	<!-- Font Poppins -->
+	<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+	<!-- Font Awesome -->
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+	<!-- SweetAlert2 -->
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+			font-family: 'Poppins', sans-serif;
+		}
+		body {
+			background-color: #121212;
+			color: white;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			height: 100vh;
+			padding: 20px;
+		}
+		.container {
+			background: #1e1e1e;
+			padding: 20px;
+			border-radius: 10px;
+			box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+			width: 100%;
+			max-width: 400px;
+			text-align: center;
+		}
+		h2 {
+			margin-bottom: 15px;
+		}
+		input, select, button {
+			width: 100%;
+			padding: 10px;
+			margin-top: 10px;
+			border-radius: 5px;
+			border: none;
+			font-size: 14px;
+		}
+		input, select {
+			background: #2c2c2c;
+			color: white;
+		}
+		button {
+			background: #007BFF;
+			color: white;
+			font-weight: bold;
+			cursor: pointer;
+			transition: 0.3s;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 8px;
+		}
+		button:hover {
+			background: #0056b3;
+		}
+		.hidden {
+			display: none;
+		}
+		.loading-icon {
+			animation: spin 1s linear infinite;
+		}
+		@keyframes spin {
+			0% { transform: rotate(0deg); }
+			100% { transform: rotate(360deg); }
+		}
+		.footer {
+			margin-top: 20px;
+			font-size: 12px;
+			color: #bbb;
+			text-align: center;
+		}
+		.footer a {
+			color: #007BFF;
+			text-decoration: none;
+			font-weight: bold;
+		}
+		#jsonOutput {
+			background: #2c2c2c;
+			padding: 10px;
+			margin-top: 15px;
+			border-radius: 5px;
+			width: 100%;
+			max-width: 400px;
+			white-space: pre-wrap;
+			font-size: 12px;
+			text-align: left;
+			overflow: auto;
+			max-height: 150px;
+		}
+	</style>
+</head>
+<body>
+
+	<div class="container">
+		<h2><i class="fa-brands fa-youtube"></i> YouTube Downloader</h2>
+
+		<label>Masukkan URL YouTube:</label>
+		<input type="text" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=..." required>
+
+		<label>Pilih Format:</label>
+		<select id="format" onchange="toggleQuality()">
+			<option value="mp3">MP3 (Audio)</option>
+			<option value="mp4">MP4 (Video)</option>
+		</select>
+
+		<label id="qualityLabel" class="hidden">Pilih Resolusi:</label>
+		<select id="quality" class="hidden">
+			<option value="144">144p - Very Low Quality</option>
+			<option value="240">240p - Low Quality</option>
+			<option value="360">360p - Medium Quality</option>
+			<option value="480">480p - High Quality</option>
+			<option value="720">720p - HD Quality</option>
+			<option value="1080">1080p - FHD Quality</option>
+		</select>
+
+		<button onclick="downloadVideo()" id="downloadBtn">
+			<i class="fa fa-download"></i> Download
+		</button>
+
+		<pre id="jsonOutput">Respons API akan muncul di sini...</pre>
+	</div>
+
+	<p class="footer">Dibuat oleh <a href="https://wa.me/62881011040349" target="_blank">@Natsu</a> | 2025</p>
+
+	<script>
+		const API_BASE_URL = window.location.origin;
+
+		function toggleQuality() {
+			const format = document.getElementById("format").value;
+			const qualityLabel = document.getElementById("qualityLabel");
+			const qualitySelect = document.getElementById("quality");
+
+			if (format === "mp4") {
+				qualityLabel.classList.remove("hidden");
+				qualitySelect.classList.remove("hidden");
+			} else {
+				qualityLabel.classList.add("hidden");
+				qualitySelect.classList.add("hidden");
+			}
+		}
+
+		async function downloadVideo() {
+			const url = document.getElementById("youtubeUrl").value.trim();
+			const format = document.getElementById("format").value;
+			const quality = document.getElementById("quality").value;
+			const endpoint = format === "mp3" ? "ytmp3" : "ytmp4";
+			const downloadBtn = document.getElementById("downloadBtn");
+			const jsonOutput = document.getElementById("jsonOutput");
+
+			if (!url) {
+				Swal.fire("Error!", "Masukkan URL YouTube terlebih dahulu!", "error");
+				return;
+			}
+
+			downloadBtn.disabled = true;
+			downloadBtn.innerHTML = '<i class="fa fa-spinner loading-icon"></i> Memproses...';
+
+			try {
+				const apiUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}${format === "mp4" ? "&quality=" + quality : ""}`;
+				const response = await fetch(apiUrl, { method: "GET", headers: { "Accept": "application/json" } });
+
+				if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+				const data = await response.json();
+
+				jsonOutput.style.color = data.status ? "#00ff00" : "#ff4444";
+				jsonOutput.textContent = JSON.stringify(data, null, 4);
+				downloadBtn.disabled = false;
+				downloadBtn.innerHTML = '<i class="fa fa-download"></i> Download';
+
+				if (data.status) {
+					Swal.fire({
+						title: "Download Siap!",
+						text: "Pilih aksi yang ingin Anda lakukan.",
+						icon: "success",
+						showCancelButton: true,
+						confirmButtonText: "Unduh",
+						cancelButtonText: "Batal",
+						showDenyButton: true,
+						denyButtonText: "Salin Link"
+					}).then((result) => {
+						if (result.isConfirmed) {
+							window.open(data.download, "_blank");
+						} else if (result.isDenied) {
+							copyToClipboard(data.download);
+						}
+					});
+				} else {
+					Swal.fire("Error!", data.message || "Terjadi kesalahan!", "error");
+				}
+			} catch (error) {
+				jsonOutput.style.color = "#ff4444";
+				jsonOutput.textContent = `Error: ${error.message}`;
+				Swal.fire("Error!", "Gagal menghubungi server!", "error");
+			}
+		}
+
+		function copyToClipboard(text) {
+			navigator.clipboard.writeText(text).then(() => {
+				Swal.fire("Berhasil!", "Link berhasil disalin!", "success");
+			});
+		}
+	</script>
+
+</body>
+</html>
